@@ -27,7 +27,7 @@ def valid_date(s):
     if not complete and not minimal:  # doesn't fit either format
         raise argparse.ArgumentTypeError('Not a valid date: {}'.format(s))
     else:
-        return complete or minimal
+        return s
 
 
 parser = argparse.ArgumentParser(description=docstr)
@@ -44,14 +44,12 @@ parser.add_argument('-e', '--end', type=valid_date,
                     '(DEFAULT: Current TimeStamp)',
                     default=datetime.datetime.now()
                     .strftime(timestamp_format_complete))
-parser.parse_args()
+parsed = parser.parse_args()
+account = parsed.account
+start = parsed.start
+end = parsed.end
 
-'''
-start_time = parser.start  # unix time stamp
-end_time = parser.end  # unix time stamp
-account_name = parser.account  # str
+output_template = 'Usage for USER {} [{}, {}]: '.format(account, start, end)
+output_template += '{} jobs, {} CPUHrs, {} SUs'
 
-template = 'Usage for USER {} [{}, {}]: {} jobs, {} CPUHrs, {} SUs'
-
-# query jobs endpoint with account_name, start_time, end_time
-'''
+# print('DEBUG: ', output_template)
