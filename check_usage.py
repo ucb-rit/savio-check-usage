@@ -1,6 +1,6 @@
 import argparse
 import datetime
-
+import requests
 
 docstr = '''
 This script shows user/project usage
@@ -53,3 +53,19 @@ output_template = 'Usage for USER {} [{}, {}]: '.format(account, start, end)
 output_template += '{} jobs, {} CPUHrs, {} SUs'
 
 # print('DEBUG: ', output_template)
+
+
+auth_token = '6905b2f4dc8798f5cff7c9af0fe93cab0dec193a'
+auth_header = {'Authorization': 'Token {}'.format(auth_token)}
+base_url = 'https://scgup-dev.lbl.gov:8443/mybrc-rest'
+
+url_account_usages = base_url + '/account_usages'
+account_usages_params = {
+    'account': account,
+    'start_time': start,
+    'end_time': end
+}
+
+account_usages = requests.get(url=url_account_usages,
+                              params=account_usages_params,
+                              headers=auth_header)
