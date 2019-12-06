@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 import argparse
 import datetime
 import requests
@@ -31,8 +32,8 @@ def valid_date(s):
 
 
 parser = argparse.ArgumentParser(description=docstr)
-parser.add_argument('-A', '--account', required=True,
-                    help='check usage of this account')
+parser.add_argument('-U', '--user', required=True,
+                    help='check usage of this user')
 parser.add_argument('-s', '--start', type=valid_date,
                     help='start time YYYY-MM-DD[THH:MM:SS]'
                     '(DEFAULT: {}-06-01T00:00:00)'.format(datetime.datetime
@@ -45,27 +46,33 @@ parser.add_argument('-e', '--end', type=valid_date,
                     default=datetime.datetime.now()
                     .strftime(timestamp_format_complete))
 parsed = parser.parse_args()
-account = parsed.account
+user = parsed.user
 start = parsed.start
 end = parsed.end
 
-output_template = 'Usage for USER {} [{}, {}]: '.format(account, start, end)
-output_template += '{} jobs, {} CPUHrs, {} SUs'
+output_header = 'Usage for USER {} [{}, {}]: '.format(user, start, end)
+base_url = 'http://localhost:8880/mybrc-rest'
 
-# print('DEBUG: ', output_template)
-
-
-auth_token = '6905b2f4dc8798f5cff7c9af0fe93cab0dec193a'
-auth_header = {'Authorization': 'Token {}'.format(auth_token)}
-base_url = 'https://scgup-dev.lbl.gov:8443/mybrc-rest'
-
-url_account_usages = base_url + '/account_usages'
-account_usages_params = {
-    'account': account,
+url_usages = base_url + '/user_project_usages'
+request_params = {
+    'user': user,
     'start_time': start,
     'end_time': end
 }
 
-account_usages = requests.get(url=url_account_usages,
-                              params=account_usages_params,
-                              headers=auth_header)
+usages = requests.get(url=url_usages,
+                      params=request_params)
+usages = usages.json()
+responses = usages['results']
+
+if len(responses) == 0:
+    print(f'no projects by user {user}')
+    exit(0)
+else:
+    print(output_header)
+
+for response in responses:
+    project = response['user_project']
+    usage = response['usage']
+
+    print(f'\tproject {project.project.name} usage is {usage}')
