@@ -51,7 +51,8 @@ start = parsed.start
 end = parsed.end
 
 output_header = 'Usage for USER {} [{}, {}]: '.format(user, start, end)
-base_url = 'http://localhost:8880/mybrc-rest'
+# base_url = 'http://localhost:8880/mybrc-rest' for local server
+base_url = 'https://scgup-dev.lbl.gov:8443/mybrc-rest'
 
 url_usages = base_url + '/user_project_usages'
 request_params = {
@@ -62,6 +63,11 @@ request_params = {
 
 usages = requests.get(url=url_usages,
                       params=request_params)
+
+if usages.status_code != 200:
+    print(f'request to backend failed with reason: {usages.reason}')
+    exit(0)
+
 usages = usages.json()
 responses = usages['results']
 
