@@ -53,9 +53,6 @@ start = parsed.start
 end = parsed.end
 
 output_header = 'Usage for USER {} [{}, {}]: '.format(user, start, end)
-auth_token = '6905b2f4dc8798f5cff7c9af0fe93cab0dec193a'
-auth_header = {'Authorization': 'Token {}'.format(auth_token)}
-
 base_url = 'https://scgup-dev.lbl.gov:8443/mybrc-rest'
 # base_url = 'http://localhost:8880/mybrc-rest' # for local server
 
@@ -68,7 +65,7 @@ url_usages = base_url + '/user_project_usages' + '?' + \
     urllib.urlencode(request_params)
 
 try:
-    req_account_usages = urllib2.Request(url_usages, auth_header)
+    req_account_usages = urllib2.Request(url_usages)
     res_account_usages = urllib2.urlopen(req_account_usages)
     usages = res_account_usages.read()
 except urllib2.URLError:
