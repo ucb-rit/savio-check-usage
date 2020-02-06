@@ -34,8 +34,13 @@ def valid_date(s):
 
 
 parser = argparse.ArgumentParser(description=docstr)
-parser.add_argument('-U', '--user', required=True,
-                    help='check usage of this user')
+
+user_account_group = parser.add_mutually_exclusive_group(required=True)
+user_account_group.add_argument('-U', '--user',
+                                help='check usage of this user')
+user_account_group.add_argument('-A', '--account',
+                                help='check usage of this account')
+
 parser.add_argument('-s', '--start', type=valid_date,
                     help='start time YYYY-MM-DD[THH:MM:SS]'
                     '(DEFAULT: {}-06-01T00:00:00)'.format(datetime.datetime
@@ -49,20 +54,34 @@ parser.add_argument('-e', '--end', type=valid_date,
                     .strftime(timestamp_format_complete))
 parsed = parser.parse_args()
 user = parsed.user
+account = parsed.account
 start = parsed.start
 end = parsed.end
+
 
 output_header = 'Usage for USER {} [{}, {}]: '.format(user, start, end)
 base_url = 'https://scgup-dev.lbl.gov:8443/mybrc-rest'
 # base_url = 'http://localhost:8880/mybrc-rest' # for local server
 
 request_params = {
-    'user': user,
     'start_time': start,
     'end_time': end
 }
-url_usages = base_url + '/user_project_usages' + '?' + \
-    urllib.urlencode(request_params)
+
+if user and not acccount:
+    request_params['user'] = user
+    url_usages = base_url + '/user_account_usages?' + \
+        urllib.urlencode(request_params)
+
+elif account and not user:
+    request_params['account'] = account
+    url_usages = base_url + '/account_usages?' + \
+        urllib.urlencode(request_params)
+else:
+    request_params['account'] = account
+    request_params['user'] = user
+    url_usages = base_url + '/user_account_usages?' + \
+        urllib.urlencode(request_params)
 
 try:
     req_account_usages = urllib2.Request(url_usages)
