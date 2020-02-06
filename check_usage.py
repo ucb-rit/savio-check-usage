@@ -4,6 +4,7 @@ import datetime
 
 import urllib2
 import urllib
+import json
 
 docstr = '''
 This script shows user/project usage
@@ -59,25 +60,29 @@ start = parsed.start
 end = parsed.end
 
 
-output_header = 'Usage for USER {} [{}, {}]: '.format(user, start, end)
 base_url = 'https://scgup-dev.lbl.gov:8443/mybrc-rest'
-# base_url = 'http://localhost:8880/mybrc-rest' # for local server
 
 request_params = {
     'start_time': start,
     'end_time': end
 }
 
-if user and not acccount:
+if user and not account:
+    output_header = 'Usage for USER {} [{}, {}]: '.format(user, start, end)
     request_params['user'] = user
     url_usages = base_url + '/user_account_usages?' + \
         urllib.urlencode(request_params)
 
 elif account and not user:
+    output_header = 'Usage for ACCOUNT {} [{}, {}]: '.format(account, start, end)
     request_params['account'] = account
     url_usages = base_url + '/account_usages?' + \
         urllib.urlencode(request_params)
 else:
+    output_header = 'Usage for USER:ACCOUNT {}:{} [{}, {}]: '.format(user,
+                                                                     account,
+                                                                     start,
+                                                                     end)
     request_params['account'] = account
     request_params['user'] = user
     url_usages = base_url + '/user_account_usages?' + \
@@ -89,8 +94,6 @@ try:
     usages = res_account_usages.read()
 except urllib2.URLError:
     raise SystemExit("ERROR: Failed to connect to backend...")
-
-print 'DEBUG:', usages
 
 if usages.status_code != 200:
     raise SystemExit("ERROR: Request to backend failed...")
@@ -109,3 +112,4 @@ for response in responses:
     usage = response['usage']
 
     print '\tproject', project.project.name, ' usage is', usage
+
