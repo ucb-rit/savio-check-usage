@@ -11,6 +11,11 @@ docstr = '''
 This script shows user/project usage
 '''
 
+##### params #####
+
+BASE_URL = 'https://scgup-dev.lbl.gov:8443/mybrc-rest'
+# BASE_URL = 'http://localhost:8880/mybrc-rest'
+
 timestamp_format_complete = '%Y-%m-%dT%H:%M:%S'
 timestamp_format_minimal = '%Y-%m-%d'
 
@@ -81,8 +86,6 @@ if not (user or account):
 
 
 
-# base_url = 'https://scgup-dev.lbl.gov:8443/mybrc-rest'
-base_url = 'http://localhost:8880/mybrc-rest'
 request_urls = {}
 output_headers = {}
 
@@ -93,7 +96,7 @@ if user:
         'end_time': end,
         'user': user
     }
-    url_usages = base_url + '/user_account_usages?' + \
+    url_usages = BASE_URL + '/user_account_usages?' + \
         urllib.urlencode(request_params)
 
     request_urls['user'] = url_usages
@@ -106,7 +109,7 @@ if account:
         'end_time': end,
         'account': account
     }
-    url_usages = base_url + '/account_usages?' + \
+    url_usages = BASE_URL + '/account_usages?' + \
         urllib.urlencode(request_params)
 
     request_urls['account'] = url_usages
@@ -120,7 +123,7 @@ if user and account:
         'user': user,
         'account': account
     }
-    url_usages = base_url + '/user_account_usages?' + \
+    url_usages = BASE_URL + '/user_account_usages?' + \
         urllib.urlencode(request_params)
 
     request_urls['user_account'] = url_usages
@@ -134,18 +137,16 @@ if user and account:
 
 def get_allocation_for_account(account):
     request_params = {'name': account}
-    req_url = base_url + '/projects?' + \
+    req_url = BASE_URL + '/projects?' + \
         urllib.urlencode(request_params)
 
     try:
         req = urllib2.Request(req_url)
-        req.add_header("Authorization",
-                        "Token cd36d6e6b80e4c292c8349f671a9d7814c977daa")
         response = json.loads(urllib2.urlopen(req).read())
         response = response['results']
 
     except urllib2.URLError:
-        pass
+        response = []
 
     if len(response) != 0:
         return response[0]['allocation'] # best match
@@ -153,8 +154,6 @@ def get_allocation_for_account(account):
 
 def process_user_account_usages(req_url):
     req = urllib2.Request(req_url)
-    req.add_header("Authorization",
-                    "Token cd36d6e6b80e4c292c8349f671a9d7814c977daa")
     response = json.loads(urllib2.urlopen(req).read())
     response = response['results']
 
@@ -172,8 +171,6 @@ def process_user_account_usages(req_url):
 
 def process_account_usages(req_url):
     req = urllib2.Request(req_url)
-    req.add_header("Authorization",
-                    "Token cd36d6e6b80e4c292c8349f671a9d7814c977daa")
     response = json.loads(urllib2.urlopen(req).read())
     response = response['results']
 
@@ -194,8 +191,6 @@ def process_account_usages(req_url):
 
 def process_user_usages():
     req = urllib2.Request(req_url)
-    req.add_header("Authorization",
-                    "Token cd36d6e6b80e4c292c8349f671a9d7814c977daa")
     response = json.loads(urllib2.urlopen(req).read())
     response = response['results']
 
