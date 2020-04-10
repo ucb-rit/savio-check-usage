@@ -7,9 +7,11 @@ import urllib2
 import urllib
 import json
 
+
+VERSION = 0.1
 docstr = '''
-This script shows user/project usage
-'''
+[version: {}] This script shows user/project usage
+'''.format(VERSION)
 
 ##### params #####
 
@@ -137,7 +139,7 @@ if user and account:
 
 def get_allocation_for_account(account):
     request_params = {'name': account}
-    req_url = BASE_URL + '/projects?' + \
+    req_url = BASE_URL + '/accounts?' + \
         urllib.urlencode(request_params)
 
     try:
