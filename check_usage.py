@@ -16,9 +16,9 @@ docstr = '''
 
 ##### params #####
 
-# BASE_URL = 'http://mybrc.brc.berkeley.edu/mybrc-rest/'
+BASE_URL = 'http://mybrc.brc.berkeley.edu/mybrc-rest/'
 # BASE_URL = 'https://scgup-dev.lbl.gov:8443/mybrc-rest'
-BASE_URL = 'http://localhost:8880/mybrc-rest'
+# BASE_URL = 'http://localhost:8880/mybrc-rest'
 
 timestamp_format_complete = '%Y-%m-%dT%H:%M:%S'
 timestamp_format_minimal = '%Y-%m-%d'
@@ -91,7 +91,7 @@ request_urls = {}
 output_headers = {}
 
 if user:
-    output_header = 'Usage for USER {} [{}, {}]: '.format(user, _start, _end)
+    output_header = 'Usage for USER {} [{}, {}]:'.format(user, _start, _end)
     request_params = {
         'start_time': start,
         'end_time': end,
@@ -119,6 +119,36 @@ if account:
 
 
 ##### output functions #####
+
+
+def get_cpu(user=None, account=None, page=1):
+    request_params = {'page': page}
+    if user:
+        request_params['user'] = user
+
+    if account:
+        request_params['account'] = account
+
+    req_url = BASE_URL + '/jobs?' + \
+        urllib.urlencode(request_params)
+
+    try:
+        req = urllib2.Request(req_url)
+        response = json.loads(urllib2.urlopen(req).read())
+    except urllib2.URLError:
+        response = {'next': None, 'response': []}
+
+    if response['next']:
+        later_job_count, later_cpu_time = get_cpu(user, account, page+1)
+    else:
+        later_job_count, later_cpu_time = 0, 0.0
+
+    net_cpu_time = 0.0
+    jobs = response['results']
+    for job in jobs:
+        net_cpu_time += job['cpu_time']
+
+    return len(jobs) + later_job_count, net_cpu_time + later_cpu_time
 
 
 def get_allocation_for_account(account):
@@ -151,7 +181,8 @@ def process_account_usages(req_url):
     usage = single['usage']
     account_project = single['account']
     account_allocation = get_allocation_for_account(account)
-    print output_headers['account'], usage, 'SUs used from an allocation of', account_allocation, 'SUs.'
+    job_count, account_cpu = get_cpu(account=account)
+    print output_headers['account'], job_count, 'jobs,', account_cpu, 'CPUHrs,', usage, 'SUs used from an allocation of', account_allocation, 'SUs.'
 
 
 def process_user_usages():
@@ -170,7 +201,8 @@ def process_user_usages():
         except ValueError:
             pass
 
-    print output_headers['user'], usage, 'SUs used.'
+    job_count, user_cpu = get_cpu(user=user)
+    print output_headers['user'], job_count, 'jobs,', user_cpu, 'CPUHrs,', usage, 'SUs used.'
 
 
 ##### get data #####
