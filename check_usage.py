@@ -65,6 +65,8 @@ parser.add_argument('-u', dest='user',
 parser.add_argument('-a', dest='account',
                     help='check usage of this account')
 
+parser.add_argument('-E', dest='expand', action='store_true',
+                    help='expand user/account usage')
 parser.add_argument('-s', dest='start', type=valid_date,
                     help='starttime for the query period (YYYY-MM-DD[THH:MM:SS])',
                     default='{}-06-01T00:00:00'.format(default_start))
@@ -75,6 +77,7 @@ parser.add_argument('-e', dest='end', type=valid_date,
 parsed = parser.parse_args()
 user = parsed.user
 account = parsed.account
+expand = parsed.expand
 _start = parsed.start
 _end = parsed.end
 start = process_date_time(_start)
@@ -90,31 +93,50 @@ if not user and not account:
 request_urls = {}
 output_headers = {}
 
-if user:
-    output_header = 'Usage for USER {} [{}, {}]:'.format(user, _start, _end)
+
+def get_user_url(start, end, user, page=1):
     request_params = {
         'start_time': start,
         'end_time': end,
-        'user': user
+        'user': user,
+        'page': page
     }
     url_usages = BASE_URL + '/user_account_usages?' + \
         urllib.urlencode(request_params)
+    return url_usages
 
-    request_urls['user'] = url_usages
+
+def get_account_url(start, end, account, page=1):
+    request_params = {
+        'start_time': start,
+        'end_time': end,
+        'account': account,
+        'page': page
+    }
+    url_usages = BASE_URL + '/account_usages?' + \
+        urllib.urlencode(request_params)
+    return url_usages
+
+
+def get_user_accounts_url(start, end, account, page=1):
+    request_params = {
+        'start_time': start,
+        'end_time': end,
+        'account': account,
+        'page': page
+    }
+    url_usages = BASE_URL + '/user_account_usages?' + \
+        urllib.urlencode(request_params)
+    return url_usages
+
+
+if user:
+    output_header = 'Usage for USER {} [{}, {}]:'.format(user, _start, _end)
     output_headers['user'] = output_header
 
 if account:
     output_header = 'Usage for ACCOUNT {} [{}, {}]:'.format(
         account, _start, _end)
-    request_params = {
-        'start_time': start,
-        'end_time': end,
-        'account': account
-    }
-    url_usages = BASE_URL + '/account_usages?' + \
-        urllib.urlencode(request_params)
-
-    request_urls['account'] = url_usages
     output_headers['account'] = output_header
 
 
@@ -168,11 +190,26 @@ def get_allocation_for_account(account):
         return response[0]['allocation']  # best match
 
 
-def process_account_usages(req_url):
-    req = urllib2.Request(req_url)
+def paginate_req_table(url_function, params):
+    req = urllib2.Request(url_function(*params))
     response = json.loads(urllib2.urlopen(req).read())
-    response = response['results']
 
+    table = response['results']
+    page = 2
+    while response['next'] is not None:
+        try:
+            req = urllib2.Request(url_function(*params, page=page))
+            response = json.loads(urllib2.urlopen(req).read())
+            table.extend(response['results'])
+            page += 1
+        except urllib2.URLError:
+            response['next'] = None
+
+    return table
+
+
+def process_account_usages():
+    response = paginate_req_table(get_account_url, [start, end, account])
     if len(response) == 0:
         print 'ERROR: Account', account, 'not defined.'
         return
@@ -180,41 +217,65 @@ def process_account_usages(req_url):
     single = response[0]
     usage = single['usage']
     account_project = single['account']
+
     account_allocation = get_allocation_for_account(account)
     job_count, account_cpu = get_cpu(account=account)
     print output_headers['account'], job_count, 'jobs,', account_cpu, 'CPUHrs,', usage, 'SUs used from an allocation of', account_allocation, 'SUs.'
 
+    if expand:
+        responses = paginate_req_table(
+            get_user_accounts_url, [start, end, account])
+
+        for single in responses:
+            percentage = 0.0
+            try:
+                percentage = float(
+                    single['usage']) / float(single['user_account']['allocation'])
+            except ValueError:
+                pass
+
+            print '\tUsage for USER {} in ACCOUNT {} [{}, {}]: {} ({:.2f}%) SUs.' \
+                .format(single['user_account']['user'],
+                        single['user_account']['account'],
+                        _start, _end, single['usage'], percentage)
+
 
 def process_user_usages():
-    req = urllib2.Request(req_url)
-    response = json.loads(urllib2.urlopen(req).read())
-    response = response['results']
-
+    response = paginate_req_table(get_user_url, [start, end, user])
     if len(response) == 0:
         print 'ERROR: User', user, 'not defined.'
         return
 
     usage = 0.0
+    extended = []
     for single in response:
         try:
             usage += float(single['usage'])
+            extended.append(single)
         except ValueError:
             pass
 
     job_count, user_cpu = get_cpu(user=user)
     print output_headers['user'], job_count, 'jobs,', user_cpu, 'CPUHrs,', usage, 'SUs used.'
 
+    if expand and len(extended) != 0:
+        for single in extended:
+            print '\tUsage for USER {} in ACCOUNT {} [{}, {}]: {} SUs.'\
+                .format(single['user_account']['user'],
+                        single['user_account']['account'],
+                        _start, _end, single['usage'])
+
 
 ##### get data #####
 
 
-for req_type, req_url in request_urls.items():
+for req_type in output_headers.keys():
     try:
         if req_type == 'user':
             process_user_usages()
 
         if req_type == 'account':
-            process_account_usages(req_url)
+            process_account_usages()
 
     except urllib2.URLError, e:
         print(e.reason)
