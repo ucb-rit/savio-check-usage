@@ -229,15 +229,19 @@ def process_account_usages():
         for single in responses:
             percentage = 0.0
             try:
-                percentage = float(
-                    single['usage']) / float(single['user_account']['allocation'])
+                percentage = float(single['usage']) / float(account_allocation)
             except ValueError:
                 pass
 
-            print '\tUsage for USER {} in ACCOUNT {} [{}, {}]: {} ({:.2f}%) SUs.' \
+            user_jobs, user_cpu = get_cpu(single['user_account']['user'],
+                                          single['user_account']['account'])
+
+            print '\tUsage for USER {} in ACCOUNT {} [{}, {}]: {} jobs,'\
+                ' {} CPUHrs, {} ({:.2f}%) SUs.' \
                 .format(single['user_account']['user'],
                         single['user_account']['account'],
-                        _start, _end, single['usage'], percentage)
+                        _start, _end, user_jobs, user_cpu, single['usage'],
+                        percentage)
 
 
 def process_user_usages():
@@ -260,10 +264,24 @@ def process_user_usages():
 
     if expand and len(extended) != 0:
         for single in extended:
-            print '\tUsage for USER {} in ACCOUNT {} [{}, {}]: {} SUs.'\
+            account = single['user_account']['account']
+            account_allocation = get_allocation_for_account(account)
+
+            percentage = 0.0
+            try:
+                percentage = float(single['usage']) / float(account_allocation)
+            except ValueError:
+                pass
+
+            user_jobs, user_cpu = get_cpu(single['user_account']['user'],
+                                          single['user_account']['account'])
+
+            print '\tUsage for USER {} in ACCOUNT {} [{}, {}]: {} jobs,'\
+                ' {} CPUHrs, {} ({:.2f}%) SUs.' \
                 .format(single['user_account']['user'],
                         single['user_account']['account'],
-                        _start, _end, single['usage'])
+                        _start, _end, user_jobs, user_cpu, single['usage'],
+                        percentage)
 
 
 ##### get data #####
@@ -278,7 +296,8 @@ for req_type in output_headers.keys():
             process_account_usages()
 
     except urllib2.URLError, e:
-        print(e.reason)
+        # print(e.reason)
+        print('Error: Contact Admins if problem persists...')
         pass  # url error
 
     except ValueError, e:
