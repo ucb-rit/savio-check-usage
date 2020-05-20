@@ -130,6 +130,16 @@ def get_user_accounts_url(start, end, account, page=1):
     return url_usages
 
 
+def get_account_user_list_url(account, page=1):
+    request_params = {
+        'account': account,
+        'page': page
+    }
+    url_usages = BASE_URL + '/user_accounts?' + \
+        urllib.urlencode(request_params)
+    return url_usages
+
+
 if user:
     output_header = 'Usage for USER {} [{}, {}]:'.format(user, _start, _end)
     output_headers['user'] = output_header
@@ -226,21 +236,38 @@ def process_account_usages():
         responses = paginate_req_table(
             get_user_accounts_url, [start, end, account])
 
+        user_dict = {}
         for single in responses:
+            user_dict[single['user_account']['user']] = True
             percentage = 0.0
             try:
-                percentage = float(single['usage']) / float(account_allocation)
+                percentage = (float(single['usage']) / float(usage)) * 100
             except ValueError:
                 pass
 
             user_jobs, user_cpu = get_cpu(single['user_account']['user'],
                                           single['user_account']['account'])
 
-            print '\tUsage for USER {} in ACCOUNT {} [{}, {}]: {} jobs,'\
+            print '\tUsage for USER {} in ACCOUNT {} [{}, {}]: {} jobs,' \
                 ' {} CPUHrs, {} ({:.2f}%) SUs.' \
                 .format(single['user_account']['user'],
                         single['user_account']['account'],
                         _start, _end, user_jobs, user_cpu, single['usage'],
+                        percentage)
+
+        user_list = paginate_req_table(get_account_user_list_url, [account])
+        for single in user_list:
+            if single['user'] in user_dict or single['user'] == None:
+                continue
+
+            percentage = 0.0
+            user_jobs, user_cpu = 0, 0
+
+            print '\tUsage for USER {} in ACCOUNT {} [{}, {}]: {} jobs,' \
+                ' {} CPUHrs, {} ({:.2f}%) SUs.' \
+                .format(single['user'],
+                        single['account'],
+                        _start, _end, user_jobs, user_cpu, 0,
                         percentage)
 
 
@@ -264,24 +291,14 @@ def process_user_usages():
 
     if expand and len(extended) != 0:
         for single in extended:
-            account = single['user_account']['account']
-            account_allocation = get_allocation_for_account(account)
-
-            percentage = 0.0
-            try:
-                percentage = float(single['usage']) / float(account_allocation)
-            except ValueError:
-                pass
-
             user_jobs, user_cpu = get_cpu(single['user_account']['user'],
                                           single['user_account']['account'])
 
             print '\tUsage for USER {} in ACCOUNT {} [{}, {}]: {} jobs,'\
-                ' {} CPUHrs, {} ({:.2f}%) SUs.' \
+                ' {} CPUHrs, {} SUs.' \
                 .format(single['user_account']['user'],
                         single['user_account']['account'],
-                        _start, _end, user_jobs, user_cpu, single['usage'],
-                        percentage)
+                        _start, _end, user_jobs, user_cpu, single['usage'])
 
 
 ##### get data #####
