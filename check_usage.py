@@ -230,7 +230,7 @@ def process_account_usages():
 
     account_allocation = get_allocation_for_account(account)
     job_count, account_cpu = get_cpu(account=account)
-    print output_headers['account'], job_count, 'jobs,', account_cpu, 'CPUHrs,', usage, 'SUs used from an allocation of', account_allocation, 'SUs.'
+    print output_headers['account'], job_count, 'jobs,', '{:.2f}'.format(account_cpu), 'CPUHrs,', usage, 'SUs used from an allocation of', account_allocation, 'SUs.'
 
     if expand:
         responses = paginate_req_table(
@@ -249,7 +249,7 @@ def process_account_usages():
                                           single['user_account']['account'])
 
             print '\tUsage for USER {} in ACCOUNT {} [{}, {}]: {} jobs,' \
-                ' {} CPUHrs, {} ({:.2f}%) SUs.' \
+                    ' {:.2f} CPUHrs, {} ({:.2f}%) SUs.' \
                 .format(single['user_account']['user'],
                         single['user_account']['account'],
                         _start, _end, user_jobs, user_cpu, single['usage'],
@@ -264,7 +264,7 @@ def process_account_usages():
             user_jobs, user_cpu = 0, 0
 
             print '\tUsage for USER {} in ACCOUNT {} [{}, {}]: {} jobs,' \
-                ' {} CPUHrs, {} ({:.2f}%) SUs.' \
+                    ' {:.2f} CPUHrs, {} ({:.2f}%) SUs.' \
                 .format(single['user'],
                         single['account'],
                         _start, _end, user_jobs, user_cpu, 0,
@@ -287,7 +287,7 @@ def process_user_usages():
             pass
 
     job_count, user_cpu = get_cpu(user=user)
-    print output_headers['user'], job_count, 'jobs,', user_cpu, 'CPUHrs,', usage, 'SUs used.'
+    print output_headers['user'], job_count, 'jobs,', '{:.2f}'.format(user_cpu), 'CPUHrs,', usage, 'SUs used.'
 
     if expand and len(extended) != 0:
         for single in extended:
@@ -295,7 +295,7 @@ def process_user_usages():
                                           single['user_account']['account'])
 
             print '\tUsage for USER {} in ACCOUNT {} [{}, {}]: {} jobs,'\
-                ' {} CPUHrs, {} SUs.' \
+                    ' {:.2f} CPUHrs, {} SUs.' \
                 .format(single['user_account']['user'],
                         single['user_account']['account'],
                         _start, _end, user_jobs, user_cpu, single['usage'])
@@ -319,3 +319,4 @@ for req_type in output_headers.keys():
 
     except ValueError, e:
         pass  # json decode error
+
