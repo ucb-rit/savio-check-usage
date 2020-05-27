@@ -118,6 +118,16 @@ def get_account_url(start, end, account, page=1):
     return url_usages
 
 
+def get_no_allocation_account_urls(account, page=1):
+    request_params = {
+        'name': account,
+        'page': page
+    }
+    url_usages = BASE_URL + '/accounts?' + \
+        urllib.urlencode(request_params)
+    return url_usages
+
+
 def get_user_accounts_url(start, end, account, page=1):
     request_params = {
         'start_time': start,
@@ -220,19 +230,28 @@ def paginate_req_table(url_function, params):
 
 def process_account_usages():
     response = paginate_req_table(get_account_url, [start, end, account])
+    response = response if len(response) != 0 else paginate_req_table(
+        get_no_allocation_account_urls, [account])
+
     if len(response) == 0:
         print 'ERROR: Account', account, 'not defined.'
         return
 
     single = response[0]
-    usage = single['usage']
-    account_project = single['account']
+    if 'usage' not in single:
+        usage = 0
+        account_project = single['name']
+        account_allocation = single['allocation']
+        job_count, account_cpu = 0, 0.0
+    else:
+        usage = single['usage']
+        account_project = single['account']
+        account_allocation = get_allocation_for_account(account)
+        job_count, account_cpu = get_cpu(account=account)
 
-    account_allocation = get_allocation_for_account(account)
-    job_count, account_cpu = get_cpu(account=account)
     print output_headers['account'], job_count, 'jobs,', '{:.2f}'.format(account_cpu), 'CPUHrs,', usage, 'SUs used from an allocation of', account_allocation, 'SUs.'
 
-    if expand:
+    if expand and usage != 0:
         responses = paginate_req_table(
             get_user_accounts_url, [start, end, account])
 
@@ -249,7 +268,7 @@ def process_account_usages():
                                           single['user_account']['account'])
 
             print '\tUsage for USER {} in ACCOUNT {} [{}, {}]: {} jobs,' \
-                    ' {:.2f} CPUHrs, {} ({:.2f}%) SUs.' \
+                ' {:.2f} CPUHrs, {} ({:.2f}%) SUs.' \
                 .format(single['user_account']['user'],
                         single['user_account']['account'],
                         _start, _end, user_jobs, user_cpu, single['usage'],
@@ -264,7 +283,7 @@ def process_account_usages():
             user_jobs, user_cpu = 0, 0
 
             print '\tUsage for USER {} in ACCOUNT {} [{}, {}]: {} jobs,' \
-                    ' {:.2f} CPUHrs, {} ({:.2f}%) SUs.' \
+                ' {:.2f} CPUHrs, {} ({:.2f}%) SUs.' \
                 .format(single['user'],
                         single['account'],
                         _start, _end, user_jobs, user_cpu, 0,
@@ -295,7 +314,7 @@ def process_user_usages():
                                           single['user_account']['account'])
 
             print '\tUsage for USER {} in ACCOUNT {} [{}, {}]: {} jobs,'\
-                    ' {:.2f} CPUHrs, {} SUs.' \
+                ' {:.2f} CPUHrs, {} SUs.' \
                 .format(single['user_account']['user'],
                         single['user_account']['account'],
                         _start, _end, user_jobs, user_cpu, single['usage'])
@@ -319,4 +338,3 @@ for req_type in output_headers.keys():
 
     except ValueError, e:
         pass  # json decode error
-
