@@ -251,7 +251,7 @@ def process_account_usages():
 
     print output_headers['account'], job_count, 'jobs,', '{:.2f}'.format(account_cpu), 'CPUHrs,', usage, 'SUs used from an allocation of', account_allocation, 'SUs.'
 
-    if expand and usage != 0:
+    if expand:
         responses = paginate_req_table(
             get_user_accounts_url, [start, end, account])
 
@@ -263,6 +263,8 @@ def process_account_usages():
                 percentage = (float(single['usage']) / float(usage)) * 100
             except ValueError:
                 pass
+            except ZeroDivisionError:
+                percentage = 0.00
 
             user_jobs, user_cpu = get_cpu(single['user_account']['user'],
                                           single['user_account']['account'])
@@ -325,10 +327,19 @@ def process_user_usages():
 
 for req_type in output_headers.keys():
     try:
+        if start > end:
+            print 'ERROR: Start time ({}) requested is after end time ({}).'.format(_start, _end)
+
+        if process_date_time('2020-06-01') > start:
+            print 'INFO: Information might be inaccurate, for accurate information contact BRC Help...'
+
         if req_type == 'user':
             process_user_usages()
 
         if req_type == 'account':
+            if account.startswith('ac_'):
+                print 'INFO: Start Date shown may be inaccurate...'
+
             process_account_usages()
 
     except urllib2.URLError, e:
