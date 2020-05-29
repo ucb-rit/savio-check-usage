@@ -9,7 +9,7 @@ import urllib
 import json
 
 
-VERSION = 0.1
+VERSION = 1.0
 docstr = '''
 [version: {}]
 '''.format(VERSION)
@@ -331,20 +331,20 @@ for req_type in output_headers.keys():
             print 'ERROR: Start time ({}) requested is after end time ({}).'.format(_start, _end)
 
         if process_date_time('2020-06-01') > start:
-            print 'INFO: Information might be inaccurate, for accurate information contact BRC Help...'
+            print 'INFO: Information might be inaccurate, for accurate information contact BRC support (brc-hpc-help@berkeley.edu).'
 
         if req_type == 'user':
             process_user_usages()
 
         if req_type == 'account':
             if account.startswith('ac_'):
-                print 'INFO: Start Date shown may be inaccurate...'
+                print 'INFO: Start Date shown may be inaccurate.'
 
             process_account_usages()
 
     except urllib2.URLError, e:
         # print(e.reason)
-        print('Error: Contact Admins if problem persists...')
+        print('Error: Could not connect to backend, contact BRC Support (brc-hpc-help@berkeley.edu) if problem persists.')
         pass  # url error
 
     except ValueError, e:
