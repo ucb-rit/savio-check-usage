@@ -118,7 +118,7 @@ def get_account_url(start, end, account, page=1):
     return url_usages
 
 
-def get_no_allocation_account_urls(account, page=1):
+def get_no_allocation_account_url(account, page=1):
     request_params = {
         'name': account,
         'page': page
@@ -136,6 +136,16 @@ def get_user_accounts_url(start, end, account, page=1):
         'page': page
     }
     url_usages = BASE_URL + '/user_account_usages?' + \
+        urllib.urlencode(request_params)
+    return url_usages
+
+
+def get_no_usage_user_url(user, page=1):
+    request_params = {
+        'user': user,
+        'page': page
+    }
+    url_usages = BASE_URL + '/user_accounts?' + \
         urllib.urlencode(request_params)
     return url_usages
 
@@ -231,7 +241,7 @@ def paginate_req_table(url_function, params):
 def process_account_usages():
     response = paginate_req_table(get_account_url, [start, end, account])
     response = response if len(response) != 0 else paginate_req_table(
-        get_no_allocation_account_urls, [account])
+        get_no_allocation_account_url, [account])
 
     if len(response) == 0:
         print 'ERROR: Account', account, 'not defined.'
@@ -293,19 +303,29 @@ def process_account_usages():
 
 
 def process_user_usages():
+    zero_user = False
     response = paginate_req_table(get_user_url, [start, end, user])
+
+    if len(response) == 0:
+        response = paginate_req_table(get_no_usage_user_url, [user])
+        zero_user = True
+
     if len(response) == 0:
         print 'ERROR: User', user, 'not defined.'
         return
 
-    usage = 0.0
-    extended = []
-    for single in response:
-        try:
-            usage += float(single['usage'])
-            extended.append(single)
-        except ValueError:
-            pass
+    if not zero_user:
+        usage = 0.0
+        extended = []
+        for single in response:
+            try:
+                usage += float(single['usage'])
+                extended.append(single)
+            except ValueError:
+                pass
+    else:
+        usage = 0.0
+        extended = []
 
     job_count, user_cpu = get_cpu(user=user)
     print output_headers['user'], job_count, 'jobs,', '{:.2f}'.format(user_cpu), 'CPUHrs,', usage, 'SUs used.'
