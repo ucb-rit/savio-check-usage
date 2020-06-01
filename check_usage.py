@@ -3,6 +3,7 @@ import argparse
 import datetime
 import time
 import getpass
+import calendar
 
 import urllib2
 import urllib
@@ -47,9 +48,9 @@ def valid_date(s):
 
 def process_date_time(date_time):
     try:
-        return time.mktime(time.strptime(date_time, timestamp_format_complete))
+        return calendar.timegm(time.strptime(date_time, timestamp_format_complete))
     except ValueError:
-        return time.mktime(time.strptime(date_time, timestamp_format_minimal))
+        return calendar.timegm(time.strptime(date_time, timestamp_format_minimal))
 
 
 ##### parse arguments #####
@@ -104,6 +105,7 @@ def get_user_url(start, end, user, page=1):
     url_usages = BASE_URL + '/user_account_usages?' + \
         urllib.urlencode(request_params)
     return url_usages
+
 
 def get_no_usage_user_url(user, page=1):
     request_params = {
