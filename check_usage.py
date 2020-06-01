@@ -185,7 +185,7 @@ if account:
 
 
 def get_cpu(user=None, account=None, page=1):
-    request_params = {'page': page}
+    request_params = {'page': page, 'start_time': start, 'end_time': end}
     if user:
         request_params['user'] = user
 
