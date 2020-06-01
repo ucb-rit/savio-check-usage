@@ -105,6 +105,15 @@ def get_user_url(start, end, user, page=1):
         urllib.urlencode(request_params)
     return url_usages
 
+def get_no_usage_user_url(user, page=1):
+    request_params = {
+        'user': user,
+        'page': page
+    }
+    url_usages = BASE_URL + '/user_accounts?' + \
+        urllib.urlencode(request_params)
+    return url_usages
+
 
 def get_account_url(start, end, account, page=1):
     request_params = {
@@ -294,18 +303,25 @@ def process_account_usages():
 
 def process_user_usages():
     response = paginate_req_table(get_user_url, [start, end, user])
+
+    no_usage = False
+    if len(response) == 0:
+        response = paginate_req_table(get_no_usage_user_url, [user])
+        no_usage = True
+
     if len(response) == 0:
         print 'ERROR: User', user, 'not defined.'
         return
 
     usage = 0.0
     extended = []
-    for single in response:
-        try:
-            usage += float(single['usage'])
-            extended.append(single)
-        except ValueError:
-            pass
+    if not no_usage:
+        for single in response:
+            try:
+                usage += float(single['usage'])
+                extended.append(single)
+            except ValueError:
+                pass
 
     job_count, user_cpu = get_cpu(user=user)
     print output_headers['user'], job_count, 'jobs,', '{:.2f}'.format(user_cpu), 'CPUHrs,', usage, 'SUs used.'
