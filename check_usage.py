@@ -209,7 +209,7 @@ def get_cpu(user=None, account=None, page=1):
     net_cpu_time = 0.0
     jobs = response['results']
     for job in jobs:
-        net_cpu_time += job['cpu_time']
+        net_cpu_time += job['cpu_time'] if job['cpu_time'] else 0.0
 
     return len(jobs) + later_job_count, net_cpu_time + later_cpu_time
 
