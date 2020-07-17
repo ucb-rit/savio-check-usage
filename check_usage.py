@@ -10,12 +10,11 @@ import urllib
 import json
 
 
-VERSION = 1.0
+VERSION = 1.1
 docstr = '''
 [version: {}]
 '''.format(VERSION)
 
-##### params #####
 
 BASE_URL = 'http://mybrc.brc.berkeley.edu/mybrc-rest/'
 # BASE_URL = 'https://scgup-dev.lbl.gov:8443/mybrc-rest'
@@ -25,7 +24,7 @@ timestamp_format_complete = '%Y-%m-%dT%H:%M:%S'
 timestamp_format_minimal = '%Y-%m-%d'
 
 
-def valid_date(s):
+def check_valid_date(s):
     '''check if date is in valid format(s)'''
     complete, minimal = None, None
 
@@ -46,19 +45,42 @@ def valid_date(s):
         return s
 
 
-def process_date_time(date_time):
+def to_timestamp(date_time):
     try:
         return calendar.timegm(time.strptime(date_time, timestamp_format_complete))
     except ValueError:
         return calendar.timegm(time.strptime(date_time, timestamp_format_minimal))
 
 
-##### parse arguments #####
+def get_account_start(account, user=None):
+    request_params = {
+        'account': account
+    }
+
+    if user:
+        request_params['user'] = user
+        url_transactions = BASE_URL + '/user_account_transactions?' + \
+            urllib.urlencode(request_params)
+    else:
+        url_transactions = BASE_URL + '/account_transactions?' + \
+            urllib.urlencode(request_params)
+
+    try:
+        req = urllib2.Request(url_transactions)
+        response = json.loads(urllib2.urlopen(req).read())['results']
+        target_start_date = response[0]['date_time']
+    except urllib2.URLError:
+        return None
+    except KeyError:
+        return None
+
+    return target_start_date.split('.')[0] if '.' in target_start_date else target_start_date
 
 
 current_month = datetime.datetime.now().month
 current_year = datetime.datetime.now().year
 default_start = current_year if current_month >= 6 else (current_year - 1)
+
 parser = argparse.ArgumentParser(description=docstr)
 
 parser.add_argument('-u', dest='user',
@@ -68,10 +90,10 @@ parser.add_argument('-a', dest='account',
 
 parser.add_argument('-E', dest='expand', action='store_true',
                     help='expand user/account usage')
-parser.add_argument('-s', dest='start', type=valid_date,
+parser.add_argument('-s', dest='start', type=check_valid_date,
                     help='starttime for the query period (YYYY-MM-DD[THH:MM:SS])',
                     default='{}-06-01T00:00:00'.format(default_start))
-parser.add_argument('-e', dest='end', type=valid_date,
+parser.add_argument('-e', dest='end', type=check_valid_date,
                     help='endtime for the query period (YYYY-MM-DD[THH:MM:SS])',
                     default=datetime.datetime.now()
                     .strftime(timestamp_format_complete))
@@ -81,21 +103,44 @@ account = parsed.account
 expand = parsed.expand
 _start = parsed.start
 _end = parsed.end
-start = process_date_time(_start)
-end = process_date_time(_end)
+start = to_timestamp(_start)
+end = to_timestamp(_end)
+
+default_start_used = _start == '{}-06-01T00:00:00'.format(default_start)
+calculate_account_start_hide_allocation = default_start_used and account and not user
+calculate_user_account_start = default_start_used and account and user
+
+# just account information, calculate single start date
+if calculate_account_start_hide_allocation:
+    target_start_date = get_account_start(account)
+    if target_start_date is not None:
+        _start = target_start_date
+        start = to_timestamp(_start)
+
+# both account and user query, calculate single start date
+if calculate_user_account_start:
+    target_start_date = get_account_start(account, user)
+    if target_start_date is not None:
+        _start = target_start_date
+        start = to_timestamp(_start)
+
 
 if not user and not account:
     user = getpass.getuser()
 
-
-##### prepare params #####
-
-
 request_urls = {}
 output_headers = {}
+if user:
+    output_header = 'Usage for USER {} [{}, {}]:'.format(user, _start, _end)
+    output_headers['user'] = output_header
+
+if account:
+    output_header = 'Usage for ACCOUNT {} [{}, {}]:'.format(
+        account, _start, _end)
+    output_headers['account'] = output_header
 
 
-def get_user_url(start, end, user, page=1):
+def url_get_user_usages(start, end, user, page=1):
     request_params = {
         'start_time': start,
         'end_time': end,
@@ -107,7 +152,7 @@ def get_user_url(start, end, user, page=1):
     return url_usages
 
 
-def get_no_usage_user_url(user, page=1):
+def url_get_zero_users(user, page=1):
     request_params = {
         'user': user,
         'page': page
@@ -117,7 +162,7 @@ def get_no_usage_user_url(user, page=1):
     return url_usages
 
 
-def get_account_url(start, end, account, page=1):
+def url_get_account_usages(start, end, account, page=1):
     request_params = {
         'start_time': start,
         'end_time': end,
@@ -129,7 +174,7 @@ def get_account_url(start, end, account, page=1):
     return url_usages
 
 
-def get_no_allocation_account_url(account, page=1):
+def url_get_zero_accounts(account, page=1):
     request_params = {
         'name': account,
         'page': page
@@ -139,7 +184,7 @@ def get_no_allocation_account_url(account, page=1):
     return url_usages
 
 
-def get_user_accounts_url(start, end, account, page=1):
+def url_get_account_users(start, end, account, page=1):
     request_params = {
         'start_time': start,
         'end_time': end,
@@ -151,7 +196,7 @@ def get_user_accounts_url(start, end, account, page=1):
     return url_usages
 
 
-def get_no_usage_user_url(user, page=1):
+def url_get_zero_users(user, page=1):
     request_params = {
         'user': user,
         'page': page
@@ -161,7 +206,7 @@ def get_no_usage_user_url(user, page=1):
     return url_usages
 
 
-def get_account_user_list_url(account, page=1):
+def url_get_user_accounts(account, page=1):
     request_params = {
         'account': account,
         'page': page
@@ -171,20 +216,7 @@ def get_account_user_list_url(account, page=1):
     return url_usages
 
 
-if user:
-    output_header = 'Usage for USER {} [{}, {}]:'.format(user, _start, _end)
-    output_headers['user'] = output_header
-
-if account:
-    output_header = 'Usage for ACCOUNT {} [{}, {}]:'.format(
-        account, _start, _end)
-    output_headers['account'] = output_header
-
-
-##### output functions #####
-
-
-def get_cpu(user=None, account=None, page=1):
+def get_cpu_usage(user=None, account=None, page=1):
     request_params = {'page': page, 'start_time': start, 'end_time': end}
     if user:
         request_params['user'] = user
@@ -202,7 +234,7 @@ def get_cpu(user=None, account=None, page=1):
         response = {'next': None, 'response': []}
 
     if response['next']:
-        later_job_count, later_cpu_time = get_cpu(user, account, page+1)
+        later_job_count, later_cpu_time = get_cpu_usage(user, account, page + 1)
     else:
         later_job_count, later_cpu_time = 0, 0.0
 
@@ -214,7 +246,7 @@ def get_cpu(user=None, account=None, page=1):
     return len(jobs) + later_job_count, net_cpu_time + later_cpu_time
 
 
-def get_allocation_for_account(account):
+def get_account_allocation(account):
     request_params = {'name': account}
     req_url = BASE_URL + '/accounts?' + \
         urllib.urlencode(request_params)
@@ -231,7 +263,7 @@ def get_allocation_for_account(account):
         return response[0]['allocation']  # best match
 
 
-def paginate_req_table(url_function, params):
+def paginate_requests(url_function, params):
     req = urllib2.Request(url_function(*params))
     response = json.loads(urllib2.urlopen(req).read())
 
@@ -249,10 +281,9 @@ def paginate_req_table(url_function, params):
     return table
 
 
-def process_account_usages():
-    response = paginate_req_table(get_account_url, [start, end, account])
-    response = response if len(response) != 0 else paginate_req_table(
-        get_no_allocation_account_url, [account])
+def process_account_query():
+    response = paginate_requests(url_get_account_usages, [start, end, account])
+    response = response if len(response) != 0 else paginate_requests(url_get_zero_accounts, [account])
 
     if len(response) == 0:
         print 'ERROR: Account', account, 'not defined.'
@@ -267,14 +298,18 @@ def process_account_usages():
     else:
         usage = single['usage']
         account_project = single['account']
-        account_allocation = get_allocation_for_account(account)
-        job_count, account_cpu = get_cpu(account=account)
+        account_allocation = get_account_allocation(account)
+        job_count, account_cpu = get_cpu_usage(account=account)
 
-    print output_headers['account'], job_count, 'jobs,', '{:.2f}'.format(account_cpu), 'CPUHrs,', usage, 'SUs used from an allocation of', account_allocation, 'SUs.'
+    # if time specified: no allocation
+    if not default_start_used:  # user specified time range
+        print output_headers['account'], job_count, 'jobs,', '{:.2f}'.format(account_cpu), 'CPUHrs,', usage, 'SUs.'
+    else:
+        print output_headers['account'], job_count, 'jobs,', '{:.2f}'.format(account_cpu), 'CPUHrs,', usage, 'SUs used from an allocation of', account_allocation, 'SUs.'
 
     if expand:
-        responses = paginate_req_table(
-            get_user_accounts_url, [start, end, account])
+        responses = paginate_requests(
+            url_get_account_users, [start, end, account])
 
         user_dict = {}
         for single in responses:
@@ -287,8 +322,8 @@ def process_account_usages():
             except ZeroDivisionError:
                 percentage = 0.00
 
-            user_jobs, user_cpu = get_cpu(single['user_account']['user'],
-                                          single['user_account']['account'])
+            user_jobs, user_cpu = get_cpu_usage(single['user_account']['user'],
+                                                single['user_account']['account'])
 
             print '\tUsage for USER {} in ACCOUNT {} [{}, {}]: {} jobs,' \
                 ' {:.2f} CPUHrs, {} ({:.2f}%) SUs.' \
@@ -297,7 +332,7 @@ def process_account_usages():
                         _start, _end, user_jobs, user_cpu, single['usage'],
                         percentage)
 
-        user_list = paginate_req_table(get_account_user_list_url, [account])
+        user_list = paginate_requests(url_get_user_accounts, [account])
         for single in user_list:
             if single['user'] in user_dict or single['user'] == None:
                 continue
@@ -313,12 +348,12 @@ def process_account_usages():
                         percentage)
 
 
-def process_user_usages():
+def process_user_query():
     zero_user = False
-    response = paginate_req_table(get_user_url, [start, end, user])
+    response = paginate_requests(url_get_user_usages, [start, end, user])
 
     if len(response) == 0:
-        response = paginate_req_table(get_no_usage_user_url, [user])
+        response = paginate_requests(url_get_zero_users, [user])
         zero_user = True
 
     if len(response) == 0:
@@ -328,8 +363,6 @@ def process_user_usages():
     usage = 0.0
     extended = []
     if not zero_user:
-        usage = 0.0
-        extended = []
         for single in response:
             try:
                 usage += float(single['usage'])
@@ -337,13 +370,13 @@ def process_user_usages():
             except ValueError:
                 pass
 
-    job_count, user_cpu = get_cpu(user=user)
+    job_count, user_cpu = get_cpu_usage(user=user)
     print output_headers['user'], job_count, 'jobs,', '{:.2f}'.format(user_cpu), 'CPUHrs,', usage, 'SUs used.'
 
     if expand and len(extended) != 0:
         for single in extended:
-            user_jobs, user_cpu = get_cpu(single['user_account']['user'],
-                                          single['user_account']['account'])
+            user_jobs, user_cpu = get_cpu_usage(single['user_account']['user'],
+                                                single['user_account']['account'])
 
             print '\tUsage for USER {} in ACCOUNT {} [{}, {}]: {} jobs,'\
                 ' {:.2f} CPUHrs, {} SUs.' \
@@ -352,25 +385,23 @@ def process_user_usages():
                         _start, _end, user_jobs, user_cpu, single['usage'])
 
 
-##### get data #####
-
-
 for req_type in output_headers.keys():
     try:
         if start > end:
             print 'ERROR: Start time ({}) requested is after end time ({}).'.format(_start, _end)
+            exit(0)
 
-        if process_date_time('2020-06-01') > start:
+        if to_timestamp('2020-06-01') > start:
             print 'INFO: Information might be inaccurate, for accurate information contact BRC support (brc-hpc-help@berkeley.edu).'
 
         if req_type == 'user':
-            process_user_usages()
+            process_user_query()
 
         if req_type == 'account':
             if account.startswith('ac_'):
                 print 'INFO: Start Date shown may be inaccurate.'
 
-            process_account_usages()
+            process_account_query()
 
     except urllib2.URLError, e:
         # print(e.reason)
@@ -379,3 +410,4 @@ for req_type in output_headers.keys():
 
     except ValueError, e:
         pass  # json decode error
+
