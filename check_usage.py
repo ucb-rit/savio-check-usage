@@ -56,16 +56,19 @@ def get_account_start(account, user=None):
     request_params = {
         'account': account
     }
+
     if user:
         request_params['user'] = user
-
-    url_transactions = BASE_URL + '/user_account_transactions?' + \
-        urllib.urlencode(request_params)
+        url_transactions = BASE_URL + '/user_account_transactions?' + \
+            urllib.urlencode(request_params)
+    else:
+        url_transactions = BASE_URL + '/account_transactions?' + \
+            urllib.urlencode(request_params)
 
     try:
         req = urllib2.Request(url_transactions)
         response = json.loads(urllib2.urlopen(req).read())['results']
-        target_start_date = response[-1]['date_time']
+        target_start_date = response[0]['date_time']
     except urllib2.URLError:
         return None
     except KeyError:
@@ -295,10 +298,11 @@ def process_account_query():
     else:
         usage = single['usage']
         account_project = single['account']
-        account_allocation = get_account_allocation(account)
+        account_allocation = int(get_account_allocation(account))
         job_count, account_cpu = get_cpu_usage(account=account)
 
-    if calculate_account_start_hide_allocation or calculate_user_account_start:
+    # if time specified: no allocation
+    if not default_start_used:  # user specified time range
         print output_headers['account'], job_count, 'jobs,', '{:.2f}'.format(account_cpu), 'CPUHrs,', usage, 'SUs.'
     else:
         print output_headers['account'], job_count, 'jobs,', '{:.2f}'.format(account_cpu), 'CPUHrs,', usage, 'SUs used from an allocation of', account_allocation, 'SUs.'
@@ -406,3 +410,4 @@ for req_type in output_headers.keys():
 
     except ValueError, e:
         pass  # json decode error
+
