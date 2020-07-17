@@ -73,6 +73,8 @@ def get_account_start(account, user=None):
         return None
     except KeyError:
         return None
+    except IndexError:
+        return None
 
     return target_start_date.split('.')[0] if '.' in target_start_date else target_start_date
 
@@ -300,6 +302,8 @@ def process_account_query():
         account_project = single['account']
         account_allocation = int(get_account_allocation(account))
         job_count, account_cpu = get_cpu_usage(account=account)
+
+    account_allocation = int(float(account_allocation))
 
     # if time specified: no allocation
     if not default_start_used:  # user specified time range
