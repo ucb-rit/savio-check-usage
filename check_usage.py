@@ -298,7 +298,7 @@ def process_account_query():
     else:
         usage = single['usage']
         account_project = single['account']
-        account_allocation = get_account_allocation(account)
+        account_allocation = int(get_account_allocation(account))
         job_count, account_cpu = get_cpu_usage(account=account)
 
     # if time specified: no allocation
