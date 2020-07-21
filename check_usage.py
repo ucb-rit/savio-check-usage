@@ -314,7 +314,7 @@ def process_account_query():
         account_project = single['account']
         account_allocation = get_account_allocation(account)
         job_count, account_cpu = get_cpu_usage(account=account)
-  
+
     account_allocation = int(float(account_allocation))
 
     # if time specified: no allocation
@@ -437,4 +437,3 @@ for req_type in output_headers.keys():
 
     except ValueError, e:
         pass  # json decode error
-
