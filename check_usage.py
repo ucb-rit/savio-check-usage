@@ -24,6 +24,18 @@ timestamp_format_complete = '%Y-%m-%dT%H:%M:%S'
 timestamp_format_minimal = '%Y-%m-%d'
 
 
+def red_str(vector):
+    return "\033[91m {}\033[00m".format(vector)
+
+
+def green_str(vector):
+    return "\033[92m {}\033[00m".format(vector)
+
+
+def yellow_str(vector):
+    return "\033[93m {}\033[00m".format(vector)
+
+
 def check_valid_date(s):
     '''check if date is in valid format(s)'''
     complete, minimal = None, None
@@ -300,9 +312,9 @@ def process_account_query():
     else:
         usage = single['usage']
         account_project = single['account']
-        account_allocation = int(get_account_allocation(account))
+        account_allocation = get_account_allocation(account)
         job_count, account_cpu = get_cpu_usage(account=account)
-
+  
     account_allocation = int(float(account_allocation))
 
     # if time specified: no allocation
@@ -329,8 +341,17 @@ def process_account_query():
             user_jobs, user_cpu = get_cpu_usage(single['user_account']['user'],
                                                 single['user_account']['account'])
 
+            if percentage < 75:
+                color_fn = green_str
+            elif percentage > 100:
+                color_fn = red_str
+            else:
+                color_fn = yellow_str
+
+            percentage = color_fn("{:.2f}".format(percentage))
+
             print '\tUsage for USER {} in ACCOUNT {} [{}, {}]: {} jobs,' \
-                ' {:.2f} CPUHrs, {} ({:.2f}%) SUs.' \
+                ' {:.2f} CPUHrs, {} ({}%) SUs.' \
                 .format(single['user_account']['user'],
                         single['user_account']['account'],
                         _start, _end, user_jobs, user_cpu, single['usage'],
@@ -343,9 +364,11 @@ def process_account_query():
 
             percentage = 0.0
             user_jobs, user_cpu = 0, 0
+            color_fn = green_str
+            percentage = color_fn("{:.2f}".format(percentage))
 
             print '\tUsage for USER {} in ACCOUNT {} [{}, {}]: {} jobs,' \
-                ' {:.2f} CPUHrs, {} ({:.2f}%) SUs.' \
+                ' {:.2f} CPUHrs, {} ({}%) SUs.' \
                 .format(single['user'],
                         single['account'],
                         _start, _end, user_jobs, user_cpu, 0,
