@@ -229,6 +229,7 @@ def url_get_user_accounts(account, page=1):
         urllib.urlencode(request_params)
     return url_usages
 
+
 def get_cpu_usage(user=None, account=None):
     request_params = {'start_time': start, 'end_time': end}
     if user:
@@ -245,7 +246,7 @@ def get_cpu_usage(user=None, account=None):
         response = json.loads(urllib2.urlopen(req).read())
     except urllib2.URLError:
         response = {'count': 0, 'total_cpu_time': 0, 'response': [], 'next': None}
-  
+
     job_count = response['count']
     cpu_time = response['total_cpu_time']
 
@@ -381,7 +382,7 @@ def process_account_query():
 
         user_list = paginate_requests(url_get_user_accounts, [account])
         for single in user_list:
-            if single['user'] in user_dict or single['user'] == None:
+            if single['user'] in user_dict or single['user'] is None:
                 continue
 
             percentage = 0.0
@@ -459,4 +460,3 @@ for req_type in output_headers.keys():
 
     except ValueError, e:
         pass  # json decode error
-
