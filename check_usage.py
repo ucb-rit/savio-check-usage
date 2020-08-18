@@ -229,8 +229,30 @@ def url_get_user_accounts(account, page=1):
         urllib.urlencode(request_params)
     return url_usages
 
+def get_cpu_usage(user=None, account=None):
+    request_params = {'start_time': start, 'end_time': end}
+    if user:
+        request_params['user'] = user
 
-def get_cpu_usage(user=None, account=None, page=1):
+    if account:
+        request_params['account'] = account
+
+    req_url = BASE_URL + '/jobs?' + \
+        urllib.urlencode(request_params)
+
+    try:
+        req = urllib2.Request(req_url)
+        response = json.loads(urllib2.urlopen(req).read())
+    except urllib2.URLError:
+        response = {'count': 0, 'total_cpu_time': 0, 'response': [], 'next': None}
+  
+    job_count = response['count']
+    cpu_time = response['total_cpu_time']
+
+    return job_count, cpu_time
+
+
+def get_cpu_usage_old(user=None, account=None, page=1):
     request_params = {'page': page, 'start_time': start, 'end_time': end}
     if user:
         request_params['user'] = user
@@ -437,3 +459,4 @@ for req_type in output_headers.keys():
 
     except ValueError, e:
         pass  # json decode error
+
