@@ -10,7 +10,7 @@ import urllib
 import json
 
 
-VERSION = 1.1
+VERSION = 1.3
 docstr = '''
 [version: {}]
 '''.format(VERSION)
